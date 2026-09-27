@@ -1,0 +1,18 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "feat/universal-search",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "feat/universal-search": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "feat/universal-search",
+    "origin"
+  ]
+}
