@@ -1,6 +1,8 @@
-import { StatsDocument as STATS_QUERY } from "@/lib/generated/graphql";
+import type { Metadata } from "next";
 import { gqlFetch, GRAPHQL_URL } from "@/lib/graphql";
-import type { Operation } from "@/lib/types";
+import { routeMetadata } from "@/lib/metadata";
+import { STATS } from "@/lib/routes";
+import type { Ledger, Operation } from "@/lib/types";
 import { getActiveContracts } from "@/lib/registry";
 import { formatOperationType } from "@/lib/formatters";
 import StatCard from "@/components/StatCard";
@@ -9,11 +11,23 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Network Stats | Lumina", description: "Lumina indexer health and Stellar network throughput." };
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = routeMetadata(STATS);
+
+const STATS_QUERY = `
+  query Stats($opLimit: Int) {
+    latestLedger {
+      sequence
+      transactionCount
+    }
+    operations(limit: $opLimit) {
+      items { type }
+    }
+  }
+`;
 
 async function getStats() {
   try {
-    return { ...(await gqlFetch<{ latestLedger: Ledger | null; operations: { items: Operation[] } }>(GRAPHQL_URL, STATS_QUERY, { opLimit: 200 })), unavailable: false };
+    return await gqlFetch<{ latestLedger: Ledger | null; operations: { items: Operation[] } | null }>(GRAPHQL_URL, STATS_QUERY, { opLimit: 200 });
   } catch {
     return { latestLedger: null, operations: { items: [] }, unavailable: true };
   }
@@ -46,8 +60,12 @@ export default async function StatsPage() {
     getStats(),
     getContractsRegisteredCount(),
   ]);
-  const backendUnavailable = unavailable || contracts.unavailable;
-  const breakdown = opBreakdown(operations.items);
+  // A 200 can still come back half-empty — GraphQL nulls a field whose resolver
+  // failed rather than failing the whole query. The ledger and the breakdown
+  // are independent, so a missing one is an empty breakdown, not a thrown
+  // `not iterable` that takes the page down with it.
+  const indexed = operations?.items ?? [];
+  const breakdown = opBreakdown(indexed);
 
   return (
     <div className="max-w-[1160px] mx-auto px-4 sm:px-7 py-12">
@@ -62,12 +80,8 @@ export default async function StatsPage() {
         <StatCard title="Avg Ledger Time" value="~5s" subtitle="Protocol target, not a live average" />
       </div>
 
-      <h2 className="font-extrabold text-base mb-3.5 text-[#0e0e12]">
-        Operation Type Breakdown
-      </h2>
-      <p className="text-xs text-[#a6a3b0] mb-3">
-        Based on the most recent {operations.items.length} indexed operations.
-      </p>
+      <h2 className="font-extrabold text-base mb-3.5 text-[#0e0e12]">Operation Type Breakdown</h2>
+      <p className="text-xs text-[#a6a3b0] mb-3">Based on the most recent {indexed.length} indexed operations.</p>
       <div className="border border-[#e5e3ea] rounded-xl p-5 flex flex-col gap-3.5">
         {breakdown.length === 0 ? (
           <p className="text-sm text-[#a6a3b0]">No operations indexed yet.</p>

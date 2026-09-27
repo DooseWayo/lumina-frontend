@@ -1,5 +1,7 @@
-import { ContractEventsDocument as EVENTS_QUERY } from "@/lib/generated/graphql";
+import type { Metadata } from "next";
 import { gqlFetch, GRAPHQL_URL } from "@/lib/graphql";
+import { routeMetadata } from "@/lib/metadata";
+import { EVENTS } from "@/lib/routes";
 import type { ContractEvent } from "@/lib/types";
 import { truncateAddress } from "@/lib/formatters";
 import TimeAgo from "@/components/TimeAgo";
@@ -9,6 +11,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Contract Events | Lumina", description: "Browse Soroban contract events indexed by Lumina." };
 
 export const dynamic = "force-dynamic";
+
+// The `?contractId=` in the URL picks which contract's events to show. It is
+// deliberately not in the canonical URL: `/events?contractId=C…` is a filtered
+// view of the same page, and listing it beside `/events` would have two URLs
+// competing for the same content.
+export const metadata: Metadata = routeMetadata(EVENTS);
 
 // The Lumina Registry deployed on testnet — the only contract with any
 // registered activity right now, used as the default example here.
