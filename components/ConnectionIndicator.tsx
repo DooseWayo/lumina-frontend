@@ -53,27 +53,27 @@ export default function ConnectionIndicator({ state, failureReason = null, onRet
   const explanationId = useId();
 
   return (
-    <div className="relative min-w-0">
-      <div className="flex flex-wrap items-center gap-2 text-xs font-bold tracking-wide text-[#0e0e12]">
-        <div
-          className="flex min-w-0 items-center gap-2"
-          role="status"
-          aria-live="polite"
-          data-testid="connection-indicator"
-          data-state={state}
-        >
-          <span
-            aria-hidden="true"
-            className={`size-[7px] shrink-0 rounded-full ${dot} ${pulse ? "animate-pulse" : ""}`}
-            style={{ boxShadow: `0 0 0 3px ${ring}` }}
-          />
-          <span>{label}</span>
-          {reason && (
-            <span className="font-normal text-[0.6875rem] text-[#a6a3b0]" data-testid="connection-reason">
-              {reason}
-            </span>
-          )}
-        </div>
+    <div
+      className="flex items-center gap-2 text-xs font-bold tracking-wide text-[#0e0e12]"
+      title={TITLE[state]}
+      // Announced politely so a reconnect is heard without interrupting, and
+      // exposed as status text rather than only as a coloured dot.
+      role="status"
+      aria-live="polite"
+      data-testid="connection-indicator"
+      data-state={state}
+    >
+      <span
+        className={`w-[7px] h-[7px] rounded-full ${dot} ${pulse ? "animate-pulse" : ""}`}
+        style={{ boxShadow: `0 0 0 3px ${ring}` }}
+      />
+      <span data-testid="connection-label">{label}</span>
+      {reason && (
+        <span className="font-normal text-[11px] text-[#a6a3b0]" data-testid="connection-reason">
+          {reason}
+        </span>
+      )}
+      {state === "disconnected" && onRetry && (
         <button
           type="button"
           aria-expanded={expanded}

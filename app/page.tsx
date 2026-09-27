@@ -1,6 +1,9 @@
 import { LatestLedgerDocument as LATEST_LEDGER_QUERY } from "@/lib/generated/graphql";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { gqlFetch, GRAPHQL_URL } from "@/lib/graphql";
+import { shareCard } from "@/lib/metadata";
+import { DEFAULT_DESCRIPTION, SITE_TITLE } from "@/lib/site";
 import type { Ledger } from "@/lib/types";
 import StatCard from "@/components/StatCard";
 import LiveFeed from "@/components/LiveFeed";
@@ -9,7 +12,25 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Home | Lumina", description: "Illuminate Stellar network data with Lumina." };
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  // `absolute` because this is the route the title template's own default
+  // describes: appending the brand to a title that already carries it would
+  // read "Lumina — Stellar Data Layer — Lumina".
+  title: { absolute: SITE_TITLE },
+  description: DEFAULT_DESCRIPTION,
+  ...shareCard({ label: SITE_TITLE, description: DEFAULT_DESCRIPTION, path: "/" }),
+};
+
+const LATEST_LEDGER_QUERY = `
+  query LatestLedger {
+    latestLedger {
+      sequence
+      closedAt
+      transactionCount
+      operationCount
+    }
+  }
+`;
 
 async function getLatestLedger(): Promise<{ ledger: Ledger | null; unavailable: boolean }> {
   try {

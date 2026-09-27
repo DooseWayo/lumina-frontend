@@ -1,9 +1,10 @@
 import { AccountDetailDocument as ACCOUNT_QUERY } from "@/lib/generated/graphql";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { gqlFetch, GRAPHQL_URL } from "@/lib/graphql";
+import { accountOgImage, routeMetadata } from "@/lib/metadata";
 import type { Account } from "@/lib/types";
-import { formatXLM } from "@/lib/formatters";
-import { validateStellarAddress } from "@/lib/stellarAddress";
+import { formatXLM, truncateAddress } from "@/lib/formatters";
 import CopyAddressButton from "@/components/CopyAddressButton";
 import AccountActivityFeed from "@/components/AccountActivityFeed";
 import AccountTransactionList from "@/components/AccountTransactionList";
@@ -13,7 +14,64 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-async function getAccount(address: string): Promise<{ account: Account | null; unavailable: boolean }> {
+/**
+ * Metadata for one account, from its address alone.
+ *
+ * The page itself fetches the account, but this does not: a share card is
+ * fetched by bots that do not wait, and a title built from the URL is both
+ * instant and always correct. The per-account image is generated from the same
+ * address, so a shared link shows which account it is without either request
+ * depending on the indexer being up.
+ */
+export function generateMetadata({ params }: { params: Promise<{ address: string }> }): Promise<Metadata> {
+  return params.then(({ address }) => {
+    const short = truncateAddress(address, 6);
+    return routeMetadata({
+      label: short,
+      description: `Balances, transactions and live activity for the Stellar account ${address}, indexed on Lumina.`,
+      path: `/accounts/${address}`,
+      image: accountOgImage(address),
+      imageAlt: `Stellar account ${short}`,
+    });
+  });
+}
+
+const ACCOUNT_QUERY = `
+  query AccountDetail($address: String!) {
+    account(address: $address) {
+      address
+      sequence
+      subentryCount
+      lastModifiedLedger
+      numSponsored
+      numSponsoring
+      balances { assetType assetCode assetIssuer balance limit }
+      flags { authRequired authRevocable authImmutable authClawbackEnabled }
+      transactions(limit: 10) {
+        hash
+        ledger
+        createdAt
+        sourceAccount
+        feeCharged
+        operationCount
+        successful
+      }
+      operations(limit: 10) {
+        id
+        type
+        createdAt
+        transactionHash
+        sourceAccount
+        from
+        to
+        amount
+        asset
+      }
+    }
+  }
+`;
+
+async function getAccount(address: string): Promise<Account | null> {
   try {
     const data = await gqlFetch<{ account: Account | null }>(GRAPHQL_URL, ACCOUNT_QUERY, { address });
     return { account: data.account, unavailable: false };

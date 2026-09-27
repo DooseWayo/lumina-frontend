@@ -232,6 +232,15 @@ export default function OwnerContracts({
     setState('error');
   }, []);
 
+  // History is per row, and the panels are long enough that leaving several
+  // open at once turns the dashboard into a wall — so opening one closes the
+  // last.
+  const toggleHistory = useCallback(
+    (entry: { contractId: string }) =>
+      setExpanded(current => (current === entry.contractId ? null : entry.contractId)),
+    []
+  );
+
   useEffect(() => {
     // The effect body only starts the fetch; every setState happens in a
     // settled-promise handler. `cancelled` stops a slow read writing into a
@@ -530,7 +539,7 @@ export default function OwnerContracts({
 
             {isOpen && (
               <div className="mt-2.5 border-t border-[#f0eff3] pt-2.5 flex flex-col gap-3">
-                <ul className="flex flex-col gap-1.5">
+                <ul className="flex flex-col gap-1.5" data-testid="history-list">
                   {entryHistory.length === 0 ? (
                     <li className="text-xs text-[#a6a3b0]">
                       No registry events indexed for this contract yet.
@@ -579,7 +588,8 @@ export default function OwnerContracts({
                     </p>
                   ) : (
                     slashes[entry.contractId] && (
-                      <ul className="flex flex-col gap-1.5">
+                      <ul className="flex flex-col gap-1.5" data-testid="slash-list">
+
                         {slashes[entry.contractId].map((slash, i) => (
                           <li
                             key={`${slash.slashedAt}-${i}`}

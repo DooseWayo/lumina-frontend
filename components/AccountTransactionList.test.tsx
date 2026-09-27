@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import type { Transaction } from "@/lib/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { Transaction } from '@/lib/types';
 
 const gqlFetch = vi.hoisted(() => vi.fn());
 
@@ -46,17 +46,15 @@ describe("AccountTransactionList", () => {
   it("labels the seed as a sample, not the whole history", async () => {
     render(<AccountTransactionList address={ADDRESS} initial={count(10)} />);
 
-    expect(await screen.findByTestId("transaction-count")).toHaveTextContent(
-      "Showing the 10 most recent transactions",
+    expect((await screen.findByTestId('transaction-count')).textContent).toBe(
+      'Showing the 10 most recent transactions'
     );
   });
 
   it("says so when the account has nothing older", async () => {
     render(<AccountTransactionList address={ADDRESS} initial={count(3)} />);
 
-    expect(await screen.findByTestId("transaction-count")).toHaveTextContent(
-      "All 3 transactions",
-    );
+    expect((await screen.findByTestId('transaction-count')).textContent).toBe('All 3 transactions');
   });
 
   it("widens the limit on load more and keeps only the new tail", async () => {
@@ -68,16 +66,15 @@ describe("AccountTransactionList", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("transaction-count")).toHaveTextContent(
-        "Showing the 25 most recent transactions",
-      ),
+      expect(screen.getByTestId('transaction-count').textContent).toBe(
+        'Showing the 25 most recent transactions'
+      )
     );
-    expect(gqlFetch.mock.calls[0][2]).toMatchObject({
-      address: ADDRESS,
-      limit: 25,
-    });
-    // 25 rows, not 10 + 25: the overlap is deduped.
-    expect(screen.getAllByRole("row")).toHaveLength(26); // 25 data rows + header
+    expect(gqlFetch.mock.calls[0][2]).toMatchObject({ address: ADDRESS, limit: 25 });
+    // 25 rows, not 10 + 25: the overlap is deduped. Counted in the body, since
+    // the table's header row carries the `row` role too.
+    const [, body] = screen.getAllByRole('rowgroup');
+    expect(within(body).getAllByRole('row')).toHaveLength(25);
   });
 
   it("stops at a short page and calls it the complete set", async () => {
@@ -89,9 +86,7 @@ describe("AccountTransactionList", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("transaction-count")).toHaveTextContent(
-        "All 13 transactions",
-      ),
+      expect(screen.getByTestId('transaction-count').textContent).toBe('All 13 transactions')
     );
     expect(screen.getByText("End of results")).toBeTruthy();
     // No further requests once the account is exhausted.
@@ -114,9 +109,9 @@ describe("AccountTransactionList", () => {
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("transaction-count")).toHaveTextContent(
-        "Showing the 25 most recent transactions",
-      ),
+      expect(screen.getByTestId('transaction-count').textContent).toBe(
+        'Showing the 25 most recent transactions'
+      )
     );
   });
 

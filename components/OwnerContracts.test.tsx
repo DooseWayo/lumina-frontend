@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import type { RegistryEntry } from "@/lib/registry";
-import { parseRegistryEvents } from "@/lib/registryHistory";
-import type { ContractEvent } from "@/lib/types";
-import { ContractCallError } from "@/lib/sorobanTx";
-import OwnerContracts from "./OwnerContracts";
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { RegistryEntry } from '@/lib/registry';
+import { parseRegistryEvents } from '@/lib/registryHistory';
+import type { ContractEvent } from '@/lib/types';
+import { ContractCallError } from '@/lib/sorobanTx';
+import OwnerContracts from './OwnerContracts';
 
-const OWNER = "GOWNERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-const C1 = "CCONTRACTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-const C2 = "CCONTRACTBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+const OWNER = 'GOWNERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const C1 = 'CCONTRACTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const C2 = 'CCONTRACTBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
 
 function entry(overrides: Partial<RegistryEntry> = {}): RegistryEntry {
   return {
@@ -212,11 +212,11 @@ describe("OwnerContracts", () => {
     });
     await userEvent.click(toggle);
 
-    const items = screen
-      .getAllByRole("listitem")
-      .filter((item) => /ledger/.test(item.textContent ?? ""));
-    expect(items[0].textContent).toContain("Deactivated");
-    expect(items[1].textContent).toContain("Registered");
+    // Scoped to the history panel: the withdrawal blockers are a list of their
+    // own, and they sit above this one.
+    const items = within(screen.getByTestId('history-list')).getAllByRole('listitem');
+    expect(items[0].textContent).toContain('Deactivated');
+    expect(items[1].textContent).toContain('Registered');
   });
 
   it("says so when a contract has no indexed registry events", async () => {

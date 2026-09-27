@@ -49,13 +49,11 @@ export function formatStroops(stroops: bigint | number | string): string {
   const value = BigInt(stroops);
   // BigInt literals need an ES2020 target; this project builds for ES2017.
   const zero = BigInt(0);
+  const one = BigInt(10_000_000);
   const negative = value < zero;
   const abs = negative ? -value : value;
-  const whole = abs / BigInt(10_000_000);
-  const frac = (abs % BigInt(10_000_000))
-    .toString()
-    .padStart(7, "0")
-    .replace(/0+$/, "");
+  const whole = abs / one;
+  const frac = (abs % one).toString().padStart(7, "0").replace(/0+$/, "");
   const grouped = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return `${negative ? "-" : ""}${grouped}${frac ? `.${frac}` : ""}`;
 }

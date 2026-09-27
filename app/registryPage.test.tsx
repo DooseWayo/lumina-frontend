@@ -16,7 +16,7 @@ const getConnectedAddress = vi.hoisted(() => vi.fn());
 const getActiveProfiles = vi.hoisted(() => vi.fn());
 const getSlashes = vi.hoisted(() => vi.fn());
 const getContractsByOwner = vi.hoisted(() => vi.fn());
-const getActiveContractsByCategory = vi.hoisted(() => vi.fn());
+const getSlashes = vi.hoisted(() => vi.fn());
 const nav = vi.hoisted(() => ({ query: "", replace: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
@@ -38,16 +38,11 @@ vi.mock("@/lib/registry", async () => {
   return {
     ...actual,
     getActiveProfiles,
-    getReputation: vi.fn().mockResolvedValue({
-      stake: BigInt(0),
-      verified: false,
-      slashedTotal: BigInt(0),
-      withdrawLockedUntil: 0,
-    }),
-    getSlashes,
     getContractsByOwner,
-    getActiveContractsByCategory,
-    withCategories: async (entries: unknown[]) => entries,
+    getSlashes,
+    // Categories arrive attached to the profiles in production; here the
+    // profiles are built already carrying them.
+    withCategories: async (profiles: unknown[]) => profiles,
   };
 });
 
@@ -64,11 +59,8 @@ const C1 = "CCONTRACTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 const profile = (
   name: string,
-  reputation: {
-    stake?: bigint;
-    verified?: boolean;
-    slashedTotal?: bigint;
-  } = {},
+  reputation: { stake?: bigint; verified?: boolean; slashedTotal?: bigint } = {},
+  categories: string[] = []
 ) => ({
   contractId: C1,
   owner: OWNER,
@@ -76,6 +68,7 @@ const profile = (
   description: "A DeFi protocol",
   active: true,
   registeredAt: 500,
+  categories,
   reputation: {
     stake: reputation.stake ?? BigInt(0),
     verified: reputation.verified ?? false,
@@ -87,7 +80,6 @@ const profile = (
 beforeEach(() => {
   vi.clearAllMocks();
   nav.query = "";
-  getActiveContractsByCategory.mockResolvedValue([profile("Gaming Protocol")]);
   getConnectedAddress.mockResolvedValue(null);
   getActiveProfiles.mockResolvedValue([profile("Global Protocol")]);
   getContractsByOwner.mockResolvedValue([profile("My Protocol")]);
@@ -159,6 +151,8 @@ describe("RegistryPage", () => {
       screen.getByRole("button", { name: /slash history/i }),
     );
 
+    // The reason sits beside the amount in one line, so match the words rather
+    // than the whole element.
     expect(await screen.findByText(/Stale event schema/)).toBeTruthy();
     expect(screen.getByText("−10 XLM")).toBeTruthy();
     expect(screen.getByText(/ledger 9,000/)).toBeTruthy();
@@ -237,13 +231,18 @@ describe("RegistryPage", () => {
     );
   });
 
-  it("asks the contract for the category named in the URL", async () => {
+  it("narrows the list to the category named in the URL", async () => {
+    getActiveProfiles.mockResolvedValue([
+      { ...profile("Gaming Protocol", {}, ["Gaming"]), contractId: "CGAMING" },
+      { ...profile("Payments Protocol", {}, ["Payments"]), contractId: "CPAYMENTS" },
+    ]);
     nav.query = "category=Gaming";
     render(<RegistryPage />);
 
     expect(await screen.findByText("Gaming Protocol")).toBeTruthy();
-    expect(getActiveContractsByCategory).toHaveBeenCalledWith("Gaming");
-    expect(getActiveProfiles).not.toHaveBeenCalled();
+    // The category view carries no reputation, so the filter is applied to the
+    // profiles that do — one read, and every row still has its badges.
+    expect(screen.queryByText("Payments Protocol")).toBeNull();
   });
 
   it("writes the chosen category to the URL", async () => {
@@ -260,8 +259,8 @@ describe("RegistryPage", () => {
 
   it("renders categories where present and no gap where absent", async () => {
     getActiveProfiles.mockResolvedValue([
-      { ...profile("Tagged"), categories: ["DeFi"] },
-      { ...profile("Legacy"), contractId: "CLEGACY", categories: [] },
+      { ...profile("Tagged", {}, ["DeFi"]), contractId: "CTAGGED" },
+      { ...profile("Legacy", {}, []), contractId: "CLEGACY" },
     ]);
     render(<RegistryPage />);
 

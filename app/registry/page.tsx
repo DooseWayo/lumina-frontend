@@ -6,8 +6,6 @@ import {
   CATEGORIES,
   CATEGORY_LABELS,
   getActiveProfiles,
-  getReputation,
-  getActiveContractsByCategory,
   isCategory,
   withCategories,
   type Category,
@@ -36,25 +34,17 @@ export default function RegistryPage() {
   );
 }
 
-/** The contract filters by category, so the server does the narrowing. */
-const fetchEntries = (category: Category | null) =>
-  (category
-    ? getActiveContractsByCategory(category).then((entries) =>
-        Promise.all(
-          entries.map(async (entry) => ({
-            ...entry,
-            reputation: await getReputation(entry.contractId),
-          })),
-        ),
-      )
-    : getActiveProfiles()
-  ).then(async (profiles) => {
-    const entries = await withCategories(profiles);
-    return profiles.map((profile, index) => ({
-      ...profile,
-      categories: entries[index].categories,
-    }));
-  });
+/**
+ * The whole list in one read: `get_active_profiles` attaches each entry's
+ * reputation, which every row needs to show its stake and verification badges.
+ * Categories come from a second, tolerant read — and since the contract's
+ * category view carries no reputation, the filter is applied here rather than
+ * by the contract.
+ */
+const fetchEntries = async (category: Category | null): Promise<RegistryProfile[]> => {
+  const profiles = await withCategories(await getActiveProfiles());
+  return category ? profiles.filter(profile => profile.categories?.includes(category)) : profiles;
+};
 
 function RegistryContent() {
   const router = useRouter();
@@ -265,28 +255,8 @@ function RegistryContent() {
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {entries.map((entry) => (
-                <div
-                  key={entry.contractId}
-                  className="border border-[#e5e3ea] rounded-[10px] p-3.5 px-4"
-                >
-                  <RegistryEntryCard profile={entry} />
-                  {entry.categories && entry.categories.length > 0 && (
-                    <ul
-                      className="flex flex-wrap gap-1.5 mt-2 list-none p-0 m-0"
-                      aria-label="Categories"
-                    >
-                      {entry.categories.map((c) => (
-                        <li
-                          key={c}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5f3ff] text-[#7c3aed]"
-                        >
-                          {CATEGORY_LABELS[c]}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+              {entries.map(entry => (
+                <RegistryEntryCard key={entry.contractId} profile={entry} />
               ))}
             </div>
           )}
